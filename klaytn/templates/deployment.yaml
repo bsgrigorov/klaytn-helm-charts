@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "klaytn.fullname" . }}
+  labels:
+    {{- include "klaytn.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "klaytn.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "klaytn.selectorLabels" . | nindent 8 }}
+        {{- include "klaytn.commonLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "klaytn.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: sync
+          image: alpine
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              # Check if the directory is empty
+              dir=/var/kend/data
+              count=$(ls -A "$dir" | wc -l)
+              if [ "$count" -le 1 ]; then
+                apk update
+                apk add axel pigz
+                # Download the file
+                axel -o $dir/klaytn-chaindata.tar.gz {{ .Values.config.snapshotUrl }}
+
+                # # Extract the file
+                tar -xvf $dir/klaytn-chaindata.tar.gz -C $dir
+
+                # Cleanup the temporary file
+                # rm $dir/klaytn-chaindata.tar.gz
+
+                echo "Finished sync"
+              else
+                echo "Directory is not empty. Skipping snapshot download and extraction."
+              fi
+          volumeMounts:
+            - name: data
+              mountPath: /var/kend/data
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - kend start && tail -f /var/kend/data/logs/kend.out
+            # - sleep 99999999999
+          ports:
+          {{- range .Values.service.ports }}
+          - containerPort: {{ .containerPort }}
+            name: {{ .name }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          - name: data
+            mountPath: /var/kend/data
+          - name: config
+            mountPath: /klaytn-docker-pkg/conf/kend.conf
+            subPath: kend.conf
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "klaytn.fullname" . }}
+      - name: config
+        configMap:
+          name: {{ include "klaytn.fullname" . }}

@@ -1,0 +1,82 @@
+replicaCount: 1
+
+image:
+  repository: klaytn/klaytn
+  pullPolicy: IfNotPresent
+  tag: v1.10.2
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  ingressPort: 80
+  ports:
+  - containerPort: 8551
+    port: 80
+    name: http
+  - containerPort: 32323
+    port: 32323
+    name: main
+  - containerPort: 8552
+    port: 8552
+    name: ws
+  - containerPort: 61001
+    port: 61001
+    name: prometheus
+
+labels: []
+
+ingress:
+  enabled: false
+  className: ""
+  annotations:
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: klaytn.example.io
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources: {}
+  # limits:
+  #   cpu: 7
+  #   memory: 55Gi
+  # requests:
+  #   cpu: 7
+  #   memory: 55Gi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+storage:
+  size: 6Ti
+  storageClass: ""
+
+# get latest link from https://packages.klaytn.net/cypress/chaindata/ TODO: update script to query the latest chaindata
+config:
+  snapshotUrl: https://s3.ap-northeast-2.amazonaws.com/klaytn-chaindata/cypress/klaytn-cypress-chaindata-20230608010612.tar.gz
+  network: cypress
+  

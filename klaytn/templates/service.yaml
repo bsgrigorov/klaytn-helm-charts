@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "klaytn.fullname" . }}-svc
+  labels:
+    {{- include "klaytn.labels" . | nindent 4 }}
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/path: '/metrics'
+    prometheus.io/port: '61001'
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    {{- range .Values.service.ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .containerPort }}
+    {{- end }}
+  selector:
+    {{- include "klaytn.selectorLabels" . | nindent 4 }}

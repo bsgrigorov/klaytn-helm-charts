@@ -1,0 +1,16 @@
+
+resources: {}
+  # limits:
+  #   cpu: 0.5
+  #   memory: 5Gi
+  # requests:
+  #   cpu: 0.5
+  #   memory: 5Gi
+
+storage:
+  size: 600Gi # recommended
+
+config:
+  snapshotUrl: https://s3.ap-northeast-2.amazonaws.com/klaytn-chaindata/baobab/klaytn-baobab-chaindata-20230529010511.tar.gz
+  network: baobab
+
